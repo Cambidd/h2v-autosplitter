@@ -66,23 +66,6 @@ startup {
 
     vars.fadescale = 0.167;
 
-    vars.H2_ILstart = new Dictionary<string, Func<bool>> {
-        {"01a", () => vars.watchers_h2["tickcounter"].Current >= 13 &&  vars.watchers_h2["tickcounter"].Current < 15 },
-        {"01b", () => vars.watchers_h2["fadebyte"].Current == 0 && vars.watchers_h2["fadebyte"].Old == 1 && vars.watchers_h2["tickcounter"].Current < 30 && vars.watchers_h2["bspstate"].Current != 255},
-        {"03a", () => vars.watchers_h2["fadebyte"].Current == 0 && vars.watchers_h2["fadebyte"].Old == 1 && vars.watchers_h2["bspstate"].Current != 255 },
-        {"03b", () => vars.watchers_h2["fadebyte"].Current == 0 && vars.watchers_h2["fadebyte"].Old == 1 && vars.watchers_h2["bspstate"].Current != 255 },
-        {"04a", () => vars.watchers_h2["fadebyte"].Current == 0 && vars.watchers_h2["fadebyte"].Old == 1 && vars.watchers_h2["bspstate"].Current != 255 },
-        {"04b", () => vars.watchers_h2["fadebyte"].Current == 0 && vars.watchers_h2["fadebyte"].Old == 1 && vars.watchers_h2["bspstate"].Current != 255 },
-        {"05a", () => vars.watchers_h2["fadebyte"].Current == 0 && vars.watchers_h2["fadebyte"].Old == 1 && vars.watchers_h2["bspstate"].Current != 255 },
-        {"05b", () => vars.watchers_h2["fadebyte"].Current == 0 && vars.watchers_h2["fadebyte"].Old == 1 && vars.watchers_h2["bspstate"].Current != 255 },
-        {"06a", () => vars.watchers_h2["fadebyte"].Current == 0 && vars.watchers_h2["fadebyte"].Old == 1 && vars.watchers_h2["bspstate"].Current != 255 },
-        {"06b", () => vars.watchers_h2["fadebyte"].Current == 0 && vars.watchers_h2["fadebyte"].Old == 1 && vars.watchers_h2["bspstate"].Current != 255 },
-        {"07a", () => vars.watchers_h2["fadebyte"].Current == 0 && vars.watchers_h2["fadebyte"].Old == 1 && vars.watchers_h2["bspstate"].Current != 255 },
-        {"08a", () => vars.watchers_h2["fadebyte"].Current == 0 && vars.watchers_h2["fadebyte"].Old == 1 && vars.watchers_h2["bspstate"].Current != 255 },
-        {"07b", () => vars.watchers_h2["fadebyte"].Current == 0 && vars.watchers_h2["fadebyte"].Old == 1 && vars.watchers_h2["bspstate"].Current != 255 },
-        {"08b", () => vars.watchers_h2["fadebyte"].Current == 0 && vars.watchers_h2["fadebyte"].Old == 1 && vars.watchers_h2["bspstate"].Current != 255 },
-    };
-
     vars.H2_levellist = new Dictionary<string, byte[]> {
 		{"01a", new byte[] {  }}, //armory
 		{"01b", new byte[] { 2, 0, 3 }}, //cairo
@@ -105,7 +88,7 @@ startup {
     settings.Add("ILmode", false, "Individual Level mode");
 	settings.SetToolTip("ILmode", "Makes the timer start, reset and ending split at the correct IL time for each level");
 
-	settings.Add("bspmode", false, "Split on unique \"Loading... Done\"'s ");
+	settings.Add("bspmode", false, "Split on unique \"Loading... Done\"'s ", "ILmode");
 	settings.SetToolTip("bspmode", "Split on unique bsp loads (\"Loading... Done\") within levels. \n" +
 		"You'll need to add a lot of extra splits for this option, see this spreadsheet for a count of how many per level of each game (outdated): \n" +
 		"tinyurl.com/bspsplit"
@@ -263,16 +246,6 @@ update {
 }
 
 start {
-    if (settings["ILmode"]) {
-        foreach (var entry in vars.H2_ILstart) {
-            if (entry.Key == vars.watchers_h2["levelname"].Current && !vars.watchers_h2["loading"].Current) {
-                if (entry.Value()) {
-                    vars.startedlevel = entry.Key;
-                    return true;
-                }
-            }
-        }
-    }
     if (vars.watchers_h2["levelname"].Current == "01a" && vars.watchers_h2["tickcounter"].Current >= 13 &&  vars.watchers_h2["tickcounter"].Current < 15) { //start on armory
         vars.startedlevel = "01a";
         return true;
