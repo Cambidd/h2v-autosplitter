@@ -36,19 +36,52 @@ init {
 }
 
 startup {
-    //Global vars
+    // Switch to game time
+    vars.aslName = "H2VSplitter";
+	if(timer.CurrentTimingMethod == TimingMethod.RealTime)
+	{
+		var timingMessage = MessageBox.Show(
+			"This game uses Game Time (time without loads) as the main timing method. "+
+			"LiveSplit is currently set to show Real Time (time INCLUDING loads). "+
+			"Would you like the timing method to be set to Game Time for you?",
+			vars.aslName+" | LiveSplit",
+			MessageBoxButtons.YesNo,MessageBoxIcon.Question
+		);
+		if (timingMessage == DialogResult.Yes)
+		timer.CurrentTimingMethod = TimingMethod.GameTime;
+	}
+
+    // Global vars
     vars.loading = false;
     vars.startedlevel = "000";
     vars.varsreset = false;
     vars.forcesplit = false;
     vars.armorymemes = false;
     vars.levelswaptime = TimeSpan.Zero;
+    vars.dirtybsps_byte = new List<byte>();
 
     vars.H2_tgjreadyflag = false;
     vars.H2_tgjreadytime = 0;
     vars.lastinternal = false;
 
     vars.fadescale = 0.167;
+
+    vars.H2_ILstart = new Dictionary<string, Func<bool>> {
+        {"01a", () => vars.watchers_h2["tickcounter"].Current >= 13 &&  vars.watchers_h2["tickcounter"].Current < 15 },
+        {"01b", () => vars.watchers_h2["fadebyte"].Current == 0 && vars.watchers_h2["fadebyte"].Old == 1 && vars.watchers_h2["tickcounter"].Current < 30 && vars.watchers_h2["bspstate"].Current != 255},
+        {"03a", () => vars.watchers_h2["fadebyte"].Current == 0 && vars.watchers_h2["fadebyte"].Old == 1 && vars.watchers_h2["bspstate"].Current != 255 },
+        {"03b", () => vars.watchers_h2["fadebyte"].Current == 0 && vars.watchers_h2["fadebyte"].Old == 1 && vars.watchers_h2["bspstate"].Current != 255 },
+        {"04a", () => vars.watchers_h2["fadebyte"].Current == 0 && vars.watchers_h2["fadebyte"].Old == 1 && vars.watchers_h2["bspstate"].Current != 255 },
+        {"04b", () => vars.watchers_h2["fadebyte"].Current == 0 && vars.watchers_h2["fadebyte"].Old == 1 && vars.watchers_h2["bspstate"].Current != 255 },
+        {"05a", () => vars.watchers_h2["fadebyte"].Current == 0 && vars.watchers_h2["fadebyte"].Old == 1 && vars.watchers_h2["bspstate"].Current != 255 },
+        {"05b", () => vars.watchers_h2["fadebyte"].Current == 0 && vars.watchers_h2["fadebyte"].Old == 1 && vars.watchers_h2["bspstate"].Current != 255 },
+        {"06a", () => vars.watchers_h2["fadebyte"].Current == 0 && vars.watchers_h2["fadebyte"].Old == 1 && vars.watchers_h2["bspstate"].Current != 255 },
+        {"06b", () => vars.watchers_h2["fadebyte"].Current == 0 && vars.watchers_h2["fadebyte"].Old == 1 && vars.watchers_h2["bspstate"].Current != 255 },
+        {"07a", () => vars.watchers_h2["fadebyte"].Current == 0 && vars.watchers_h2["fadebyte"].Old == 1 && vars.watchers_h2["bspstate"].Current != 255 },
+        {"08a", () => vars.watchers_h2["fadebyte"].Current == 0 && vars.watchers_h2["fadebyte"].Old == 1 && vars.watchers_h2["bspstate"].Current != 255 },
+        {"07b", () => vars.watchers_h2["fadebyte"].Current == 0 && vars.watchers_h2["fadebyte"].Old == 1 && vars.watchers_h2["bspstate"].Current != 255 },
+        {"08b", () => vars.watchers_h2["fadebyte"].Current == 0 && vars.watchers_h2["fadebyte"].Old == 1 && vars.watchers_h2["bspstate"].Current != 255 },
+    };
 
     vars.H2_levellist = new Dictionary<string, byte[]> {
 		{"01a", new byte[] {  }}, //armory
@@ -66,12 +99,26 @@ startup {
 		{"07b", new byte[] { 1, 2, 4 }}, //HC -- none if doing HC skip
 		{"08b", new byte[] { 0, 1, 3 }}, //TGJ -- starts 0 and in cs, then goes to 1, then 0, then 1, then 0, then 3 (skipping 2 cos it's skippable)
 	};
+
+
+    // Settings
+    settings.Add("ILmode", false, "Individual Level mode");
+	settings.SetToolTip("ILmode", "Makes the timer start, reset and ending split at the correct IL time for each level");
+
+	settings.Add("bspmode", false, "Split on unique \"Loading... Done\"'s ");
+	settings.SetToolTip("bspmode", "Split on unique bsp loads (\"Loading... Done\") within levels. \n" +
+		"You'll need to add a lot of extra splits for this option, see this spreadsheet for a count of how many per level of each game (outdated): \n" +
+		"tinyurl.com/bspsplit"
+	);
 }
 
 update {
     vars.watchers_h2.UpdateAll(game);
-    vars.watchers_h2xy.UpdateAll(game);
     vars.watchers_h2fade.UpdateAll(game);
+
+    if (settings["bspmode"]) {
+        vars.watchers_h2xy.UpdateAll(game);
+    }
 
     //copypasta var reset code
     if (timer.CurrentPhase == TimerPhase.Running && !vars.varsreset) {
@@ -84,6 +131,7 @@ update {
         vars.forcesplit = false;
         vars.armorymemes = false;
         vars.levelswaptime = TimeSpan.Zero;
+        vars.dirtybsps_byte.Clear();
 
         vars.H2_tgjreadyflag = false;
         vars.H2_tgjreadytime = 0;
@@ -123,6 +171,9 @@ update {
                 case "07b": //High Charity
                     if ((vars.watchers_h2["tickcounter"].Current > 60 && vars.watchers_h2["fadebyte"].Current == 1 && vars.watchers_h2["fadebyte"].Old == 1 && vars.watchers_h2["letterbox"].Current > 0.96 && vars.watchers_h2["letterbox"].Old <= 0.96 && vars.watchers_h2["letterbox"].Old != 0)) {
                         vars.loading = true;
+                        if(settings["ILmode"]) {
+                            vars.forcesplit = true;
+                        }
                     }
                 break;
 
@@ -139,6 +190,9 @@ update {
                     else if ((vars.watchers_h2["tickcounter"].Current > 60 && vars.lastinternal && vars.watchers_h2["fadebyte"].Current == 1 && vars.watchers_h2["fadebyte"].Old == 1 && vars.watchers_h2["letterbox"].Current > 0.96 && vars.watchers_h2["letterbox"].Old <= 0.96 && vars.watchers_h2["letterbox"].Old != 0)) {
                         vars.loading = true;	
                         vars.lastinternal = false;
+                        if(settings["ILmode"]) {
+                            vars.forcesplit = true;
+                        }
                     }
                 break;
 
@@ -146,6 +200,9 @@ update {
                     if ((vars.watchers_h2["tickcounter"].Current > 60 && vars.watchers_h2["fadebyte"].Current == 1 && vars.watchers_h2["fadebyte"].Old == 1 && vars.watchers_h2["letterbox"].Current > 0.96 && vars.watchers_h2["letterbox"].Old <= 0.96 && vars.watchers_h2["letterbox"].Old != 0)) {
                         if (vars.watchers_h2["bspstate"].Current == 4 || vars.watchers_h2["loading"].Current) {
                             vars.loading = true;
+                            if(settings["ILmode"]) {
+                                vars.forcesplit = true;
+                            }
                         }
                     }
                 break;
@@ -206,6 +263,16 @@ update {
 }
 
 start {
+    if (settings["ILmode"]) {
+        foreach (var entry in vars.H2_ILstart) {
+            if (entry.Key == vars.watchers_h2["levelname"].Current && !vars.watchers_h2["loading"].Current) {
+                if (entry.Value()) {
+                    vars.startedlevel = entry.Key;
+                    return true;
+                }
+            }
+        }
+    }
     if (vars.watchers_h2["levelname"].Current == "01a" && vars.watchers_h2["tickcounter"].Current >= 13 &&  vars.watchers_h2["tickcounter"].Current < 15) { //start on armory
         vars.startedlevel = "01a";
         return true;
@@ -213,6 +280,12 @@ start {
     else if (vars.watchers_h2["levelname"].Current == "01b" && !vars.watchers_h2["loading"].Current && vars.watchers_h2["fadebyte"].Current == 0 && vars.watchers_h2["fadebyte"].Old == 1 && vars.watchers_h2["tickcounter"].Current < 30) { //start on cairo
         vars.startedlevel = "01b";
         return true;
+    }
+    else if (settings["ILmode"]) {
+        if (vars.watchers_h2["fadebyte"].Current == 0 && vars.watchers_h2["fadebyte"].Old == 1 && vars.watchers_h2["bspstate"].Current != 255) {
+            vars.startedlevel = vars.watchers_h2["levelname"].Current;
+            return true;
+        }
     }
 }
 
@@ -222,19 +295,138 @@ split {
         return true;
     }
     else if (vars.watchers_h2["levelname"].Current == "08b") {
-        return (vars.watchers_h2["fadebyte"].Current == 1 && vars.watchers_h2["letterbox"].Current > 0.96 && vars.watchers_h2["letterbox"].Old <= 0.96  && vars.watchers_h2["letterbox"].Old != 0 && vars.H2_tgjreadyflag && ( vars.watchers_h2["tickcounter"].Current > (vars.H2_tgjreadytime + 300)));
+        if (vars.watchers_h2["fadebyte"].Current == 1 && vars.watchers_h2["letterbox"].Current > 0.96 && vars.watchers_h2["letterbox"].Old <= 0.96  && vars.watchers_h2["letterbox"].Old != 0 && vars.H2_tgjreadyflag && ( vars.watchers_h2["tickcounter"].Current > (vars.H2_tgjreadytime + 300))) {
+            return true;
+        }
     }
-    else return (vars.watchers_h2["game_won"].Current && !vars.watchers_h2["game_won"].Old && vars.watchers_h2["levelname"].Current != "00a" && vars.watchers_h2["levelname"].Current != "01a");
+    else if (!settings["ILmode"] && vars.watchers_h2["game_won"].Current && !vars.watchers_h2["game_won"].Old && vars.watchers_h2["levelname"].Current != "00a" && vars.watchers_h2["levelname"].Current != "01a") {
+        return true;
+    }
+
+    // This is straight copypasta code by Burnt from the MCC autosplitter. I assume it should be mostly interchangable.
+    if (settings["bspmode"]) {
+        string checklevel = vars.watchers_h2["levelname"].Current;
+        switch (checklevel) {
+            case "01b":
+                if (vars.watchers_h2["bspstate"].Current != vars.watchers_h2["bspstate"].Old && Array.Exists((byte[]) vars.H2_levellist[checklevel], x => x == vars.watchers_h2["bspstate"].Current) && !(vars.dirtybsps_byte.Contains(vars.watchers_h2["bspstate"].Current))) {
+                    if (vars.watchers_h2["bspstate"].Current == 0 && !(vars.dirtybsps_byte.Contains(2)))	{ // hacky workaround for the fact that the level starts on bsp 0 and returns there later
+                        return false;
+                    }
+                    vars.dirtybsps_byte.Add(vars.watchers_h2["bspstate"].Current);
+                    return true;
+                }
+            break;
+            
+            case "03a":
+            case "03b":
+            case "05a":
+            case "05b":
+            case "06a":
+            case "06b":
+            case "07a":
+            case "07b":
+                if (vars.watchers_h2["bspstate"].Current != vars.watchers_h2["bspstate"].Old && Array.Exists((byte[]) vars.H2_levellist[checklevel], x => x == vars.watchers_h2["bspstate"].Current) && !(vars.dirtybsps_byte.Contains(vars.watchers_h2["bspstate"].Current))) {
+                    vars.dirtybsps_byte.Add(vars.watchers_h2["bspstate"].Current);
+                    return true;
+                }
+            break;
+            
+            case "04a":
+                if (vars.watchers_h2["bspstate"].Current != vars.watchers_h2["bspstate"].Old && Array.Exists((byte[]) vars.H2_levellist[checklevel], x => x == vars.watchers_h2["bspstate"].Current) && !(vars.dirtybsps_byte.Contains(vars.watchers_h2["bspstate"].Current))) {
+                    if (vars.watchers_h2["bspstate"].Current == 0 && !(vars.dirtybsps_byte.Contains(3))) { // hacky workaround for the fact that the level starts on bsp 0 and returns there later
+                        return false;
+                    }
+                    vars.dirtybsps_byte.Add(vars.watchers_h2["bspstate"].Current);
+                    return true;
+                }
+            break;
+            
+            case "04b":
+                if (vars.watchers_h2["bspstate"].Current == 3 && !(vars.dirtybsps_byte.Contains(3))) {
+                    vars.dirtybsps_byte.Add(3);	//prevent splitting on starting bsp
+                }
+                if (vars.watchers_h2["bspstate"].Current != vars.watchers_h2["bspstate"].Old && Array.Exists((byte[]) vars.H2_levellist[checklevel], x => x == vars.watchers_h2["bspstate"].Current) && !(vars.dirtybsps_byte.Contains(vars.watchers_h2["bspstate"].Current))) {
+                    if (vars.watchers_h2["bspstate"].Current == 0 && (vars.dirtybsps_byte.Contains(3))) {
+                        return true;
+                    } // hacky workaround for the fact that the level starts on bsp 0 and returns there later
+                    
+                    vars.dirtybsps_byte.Add(vars.watchers_h2["bspstate"].Current);
+                    return true;
+                }
+            break;
+            
+            case "08a":
+                if (vars.watchers_h2["bspstate"].Current != vars.watchers_h2["bspstate"].Old && Array.Exists((byte[]) vars.H2_levellist[checklevel], x => x == vars.watchers_h2["bspstate"].Current) && !(vars.dirtybsps_byte.Contains(vars.watchers_h2["bspstate"].Current))) {
+                    if (vars.watchers_h2["bspstate"].Current == 0 && !(vars.dirtybsps_byte.Contains(1))) {	// hacky workaround for the fact that the level starts on bsp 0 and returns there later
+                        return false;
+                    }
+                    vars.dirtybsps_byte.Add(vars.watchers_h2["bspstate"].Current);
+                    return true;
+                }
+            break;
+
+            case "08b":
+            print("yes");
+                //TGJ -- starts 0 and in cs, then goes to 1, then 0, then 1, then 0, then 3 (skipping 2 cos it's skippable)
+                //so I have jank logic cos it does so much backtracking and backbacktracking
+                if (vars.watchers_h2["bspstate"].Current != vars.watchers_h2["bspstate"].Old) {                    
+                    byte checkbspstate = vars.watchers_h2["bspstate"].Current;
+                    switch (checkbspstate) {
+                        case 1:
+                            if (!(vars.dirtybsps_byte.Contains(1)) && vars.watchers_h2xy["xpos"].Current > -2 && vars.watchers_h2xy["xpos"].Current < 5 && vars.watchers_h2xy["ypos"].Current > -35 && vars.watchers_h2xy["ypos"].Current < -15) {
+                                vars.dirtybsps_byte.Add(1);
+                                return true;
+                            }
+                            else if (!(vars.dirtybsps_byte.Contains(21)) && (vars.dirtybsps_byte.Contains(10))  && vars.watchers_h2xy["xpos"].Current > 15 && vars.watchers_h2xy["xpos"].Current < 25 && vars.watchers_h2xy["ypos"].Current > 15 && vars.watchers_h2xy["ypos"].Current < 30) {
+                                vars.dirtybsps_byte.Add(21);
+                                return true;
+                            }
+                        
+                        break;
+                        
+                        case 0:
+                            if (!(vars.dirtybsps_byte.Contains(10)) && vars.watchers_h2xy["xpos"].Current > -20 && vars.watchers_h2xy["xpos"].Current < -10 && vars.watchers_h2xy["ypos"].Current > 20 && vars.watchers_h2xy["ypos"].Current < 30) {
+                                vars.dirtybsps_byte.Add(10);
+                                return true;
+                            }
+                            else if (!(vars.dirtybsps_byte.Contains(20)) && (vars.dirtybsps_byte.Contains(21))  && vars.watchers_h2xy["xpos"].Current > 45 && vars.watchers_h2xy["xpos"].Current < 55 && vars.watchers_h2xy["ypos"].Current > -5 && vars.watchers_h2xy["ypos"].Current < 10) {
+                                vars.dirtybsps_byte.Add(20);
+                                return true;
+                            }
+                        break;
+                        
+                        case 3:
+                            if (!(vars.dirtybsps_byte.Contains(3))) {
+                                vars.dirtybsps_byte.Add(3);
+                                return true;
+                            }
+                        break;
+                        
+                        default:
+                        break;
+                    }
+                } 
+            break;
+            default:
+            break;
+        }
+    }
 }
 
 reset {
-    if ((vars.watchers_h2["levelname"].Current == "01a" || (vars.watchers_h2["levelname"].Current == "01b" && vars.startedlevel != "01a") || vars.watchers_h2["levelname"].Current == "00a") && timer.CurrentPhase != TimerPhase.Ended) {
+    if (settings["ILmode"]) {
+        return (((vars.watchers_h2["map_reset"].Current && !vars.watchers_h2["map_reset"].Old) || (vars.watchers_h2["levelname"].Current == "mai")) && timer.CurrentPhase != TimerPhase.Ended);
+    }
+    else if ((vars.watchers_h2["levelname"].Current == "01a" || (vars.watchers_h2["levelname"].Current == "01b" && vars.startedlevel != "01a") || vars.watchers_h2["levelname"].Current == "00a") && timer.CurrentPhase != TimerPhase.Ended) {
         return ((vars.watchers_h2["map_reset"].Current && !vars.watchers_h2["map_reset"].Old) || (!vars.watchers_h2["loading"].Current && vars.watchers_h2["loading"].Old && vars.watchers_h2["tickcounter"].Current < 60));
     }
 }
 
 isLoading {
-    return vars.loading;
+    if (settings["ILmode"]) {
+        return false;
+    }
+    else return vars.loading;
 }
 
 gameTime {
