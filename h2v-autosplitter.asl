@@ -13,6 +13,8 @@ init {
 
     vars.watchers_h2.Add(new StringWatcher(new DeepPointer(0x47CF0C), 3) { Name = "levelname" });
     vars.watchers_h2.Add(new MemoryWatcher<uint>(new DeepPointer(0x4C06E4, 0x8)) { Name = "tickcounter" });
+    vars.watchers_h2.Add(new MemoryWatcher<ushort>(new DeepPointer(0x4C06E4, 0x2)) { Name = "tickrate" });
+
     vars.watchers_h2.Add(new MemoryWatcher<float>(new DeepPointer(0x48227C, 0x0)) { Name = "letterbox" });
     vars.watchers_h2.Add(new MemoryWatcher<byte>(new DeepPointer(0x48227C, 0x5)) { Name = "fadebyte" });
     vars.watchers_h2.Add(new MemoryWatcher<byte>(new DeepPointer(0x4119A4)) { Name = "bspstate" });
@@ -246,7 +248,7 @@ update {
 }
 
 start {
-    if (vars.watchers_h2["levelname"].Current == "01a" && vars.watchers_h2["tickcounter"].Current >= 13 &&  vars.watchers_h2["tickcounter"].Current < 15) { //start on armory
+    if (vars.watchers_h2["levelname"].Current == "01a" && vars.watchers_h2["tickcounter"].Current >= (13 * (vars.watchers_h2["tickrate"].Current / 30)) && vars.watchers_h2["tickcounter"].Current < (15 * (vars.watchers_h2["tickrate"].Current / 30))) { //start on armory
         vars.startedlevel = "01a";
         return true;
     }
@@ -276,7 +278,7 @@ split {
         return true;
     }
 
-    // This is straight copypasta code by Burnt from the MCC autosplitter. I assume it should be mostly interchangable.
+    // This is straight copypasta code from Burnt from the MCC autosplitter. I assume it should be mostly interchangable.
     if (settings["bspmode"]) {
         string checklevel = vars.watchers_h2["levelname"].Current;
         switch (checklevel) {
